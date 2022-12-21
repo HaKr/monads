@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-explicit-any
 import test, { ExecutionContext } from "ava";
 
 import {
@@ -23,14 +24,14 @@ import {
 
 const testMatch = (o: Option<unknown>): string => {
   return o.match({
-    some: (_) => "some",
+    some: (_: any) => "some",
     none: "none",
   });
 };
 
 const testMatchNoneFunc = (o: Option<unknown>): string => {
   return o.match({
-    some: (_) => "some",
+    some: (_: any) => "some",
     none: () => "none",
   });
 };
@@ -59,7 +60,7 @@ const testSome = <T>(t: ExecutionContext, input: T, type: string) => {
   // Test map, andThen
   t.is(
     some
-      .map((s) => {
+      .map((s: any) => {
         t.is(s, input);
         return "foo";
       })
@@ -68,7 +69,7 @@ const testSome = <T>(t: ExecutionContext, input: T, type: string) => {
   );
   t.true(
     some
-      .andThen((s) => {
+      .andThen((s: any) => {
         t.is(s, input);
         return None;
       })
@@ -103,7 +104,7 @@ const testNone = (t: ExecutionContext, someAsNone?: Option<unknown>) => {
   // Test map, andThen
   t.true(
     none
-      .map((_) => {
+      .map((_: any) => {
         t.fail("cannot be some");
         return "foo";
       })
@@ -111,7 +112,7 @@ const testNone = (t: ExecutionContext, someAsNone?: Option<unknown>) => {
   );
   t.true(
     none
-      .andThen((_) => {
+      .andThen((_: any) => {
         t.fail("cannot be some");
         return Some("foo");
       })
@@ -127,7 +128,7 @@ const testNone = (t: ExecutionContext, someAsNone?: Option<unknown>) => {
   t.is(testMatchNoneFunc(none), "none");
 };
 
-booleanValues.forEach((value, index) => {
+booleanValues.forEach((value: any, index: any) => {
   test(
     `Some works with boolean value ${value} ${index}`,
     testSome,
@@ -137,7 +138,7 @@ booleanValues.forEach((value, index) => {
   test(`None works with boolean value ${value} ${index}`, testNone);
 });
 
-numberValues.forEach((value, index) => {
+numberValues.forEach((value: any, index: any) => {
   test(
     `Some works with number value ${value} ${index}`,
     testSome,
@@ -147,7 +148,7 @@ numberValues.forEach((value, index) => {
   test(`None works with number value ${value} ${index}`, testNone);
 });
 
-bigintValues.forEach((value, index) => {
+bigintValues.forEach((value: any, index: any) => {
   test(
     `Some works with bigint value ${value} ${index}`,
     testSome,
@@ -157,7 +158,7 @@ bigintValues.forEach((value, index) => {
   test(`None works with bigint value ${value} ${index}`, testNone);
 });
 
-symbolValues.forEach((value, index) => {
+symbolValues.forEach((value: any, index: any) => {
   test(
     `Some works with symbol value ${String(value)} ${index}`,
     testSome,
@@ -167,7 +168,7 @@ symbolValues.forEach((value, index) => {
   test(`None works with symbol value ${String(value)} ${index}`, testNone);
 });
 
-stringValues.forEach((value, index) => {
+stringValues.forEach((value: any, index: any) => {
   test(
     `Some works with string value ${value} ${index}`,
     testSome,
@@ -177,7 +178,7 @@ stringValues.forEach((value, index) => {
   test(`None works with string value ${value} ${index}`, testNone);
 });
 
-functionValues.forEach((value, index) => {
+functionValues.forEach((value: any, index: any) => {
   test(
     `Some works with function value ${value} ${index}`,
     testSome,
@@ -187,7 +188,7 @@ functionValues.forEach((value, index) => {
   test(`None works with function value ${value} ${index}`, testNone);
 });
 
-undefinedValues.forEach((value, index) => {
+undefinedValues.forEach((value: any, index: any) => {
   test(
     `Some works with undefined value ${value} ${index}`,
     testSome,
@@ -197,7 +198,7 @@ undefinedValues.forEach((value, index) => {
   test(`None works with undefined value ${value} ${index}`, testNone);
 });
 
-nullValues.forEach((value, index) => {
+nullValues.forEach((value: any, index: any) => {
   test(
     `Some works with null value ${value} ${index}`,
     testSome,
@@ -207,7 +208,7 @@ nullValues.forEach((value, index) => {
   test(`None works with null value ${value} ${index}`, testNone);
 });
 
-objectValues.forEach((value, index) => {
+objectValues.forEach((value: any, index: any) => {
   test(
     `Some works with object value ${value} ${index}`,
     testSome,
