@@ -1,5 +1,5 @@
-import test, { ExecutionContext } from 'ava';
-import { Some } from '../../lib/option/option';
+import test, { ExecutionContext } from "ava";
+import { Some } from "../../lib/option/option";
 
 import {
   Err,
@@ -8,7 +8,7 @@ import {
   Ok,
   Result,
   ResultType,
-} from '../../lib/result/result';
+} from "../../lib/result/result";
 
 import {
   bigintValues,
@@ -20,12 +20,12 @@ import {
   stringValues,
   symbolValues,
   undefinedValues,
-} from '../_support/testValues';
+} from "../_support/testValues";
 
 const testMatch = (r: Result<unknown, unknown>): string => {
   return r.match({
-    ok: (_) => 'ok',
-    err: (_) => 'err',
+    ok: (_) => "ok",
+    err: (_) => "err",
   });
 };
 
@@ -41,7 +41,7 @@ const testOk = <T>(t: ExecutionContext, input: T, type: string) => {
   t.false(ok.isErr());
 
   // Test ok
-  if (typeof input === 'undefined') {
+  if (typeof input === "undefined") {
     t.true(ok.ok().isNone());
   } else {
     t.is(ok.ok().unwrap(), input);
@@ -51,38 +51,38 @@ const testOk = <T>(t: ExecutionContext, input: T, type: string) => {
   t.true(ok.err().isNone());
 
   // Test unwrap, unwrapOr, unwrapOrElse, unwrapErr
-  t.is(typeof ok.unwrap(), type);
+  t.is(typeof ok.unwrap(), type as any);
   t.is(ok.unwrap(), input);
-  t.is(ok.unwrapOr('foo' as any), input);
+  t.is(ok.unwrapOr("foo" as any), input);
   t.is(
     ok.unwrapOrElse((_) => {
-      t.fail('cannot be err');
-      return 'foo' as any;
+      t.fail("cannot be err");
+      return "foo" as any;
     }),
     input,
   );
   t.throws(() => ok.unwrapErr());
 
   // Test match
-  t.is(testMatch(ok), 'ok');
+  t.is(testMatch(ok), "ok");
 
   // Test map
   t.is(
     ok
       .map((s) => {
         t.is(s, input);
-        return 'foo';
+        return "foo";
       })
       .unwrap(),
-    'foo',
+    "foo",
   );
 
   // Test mapErr
   t.is(
     ok
       .mapErr((_) => {
-        t.fail('cannot be err');
-        return 'foo';
+        t.fail("cannot be err");
+        return "foo";
       })
       .unwrap(),
     input,
@@ -93,27 +93,27 @@ const testOk = <T>(t: ExecutionContext, input: T, type: string) => {
     ok
       .andThen((s) => {
         t.is(s, input);
-        return Ok('foo');
+        return Ok("foo");
       })
       .unwrap(),
-    'foo',
+    "foo",
   );
   t.is(
     ok
       .andThen((s) => {
         t.is(s, input);
-        return Err('foo') as any;
+        return Err("foo") as any;
       })
       .unwrapErr(),
-    'foo',
+    "foo" as unknown as never,
   );
 
   // Test orElse
   t.is(
     ok
       .orElse((_) => {
-        t.fail('cannot be err');
-        return Some('foo') as any;
+        t.fail("cannot be err");
+        return Some("foo") as any;
       })
       .unwrap(),
     input,
@@ -135,7 +135,7 @@ const testErr = <E>(t: ExecutionContext, input: E, _type: string) => {
   t.true(err.ok().isNone());
 
   // Test err
-  if (typeof input === 'undefined') {
+  if (typeof input === "undefined") {
     t.true(err.err().isNone());
   } else {
     t.is(err.err().unwrap(), input);
@@ -143,25 +143,25 @@ const testErr = <E>(t: ExecutionContext, input: E, _type: string) => {
 
   // Test unwrap, unwrapOr, unwrapOrElse
   t.throws(() => err.unwrap());
-  t.is(err.unwrapOr('foo'), 'foo');
+  t.is(err.unwrapOr("foo"), "foo");
   t.is(
     err.unwrapOrElse((e) => {
       t.is(e, input);
-      return 'foo';
+      return "foo";
     }),
-    'foo',
+    "foo",
   );
   t.is(err.unwrapErr(), input);
 
   // Test match
-  t.is(testMatch(err), 'err');
+  t.is(testMatch(err), "err");
 
   // Test map
   t.true(
     err
       .map((_) => {
-        t.fail('cannot be ok');
-        return 'foo';
+        t.fail("cannot be ok");
+        return "foo";
       })
       .isErr(),
   );
@@ -171,18 +171,18 @@ const testErr = <E>(t: ExecutionContext, input: E, _type: string) => {
     err
       .mapErr((e) => {
         t.is(e, input);
-        return 'foo';
+        return "foo";
       })
       .unwrapErr(),
-    'foo',
+    "foo",
   );
 
   // Test andThen
   t.is(
     err
       .andThen((_) => {
-        t.fail('cannot be ok');
-        return Ok('foo');
+        t.fail("cannot be ok");
+        return Ok("foo");
       })
       .unwrapErr(),
     input,
@@ -193,19 +193,19 @@ const testErr = <E>(t: ExecutionContext, input: E, _type: string) => {
     err
       .orElse((e) => {
         t.is(e, input);
-        return Ok('foo');
+        return Ok("foo");
       })
       .unwrap(),
-    'foo',
+    "foo",
   );
   t.is(
     err
       .orElse((e) => {
         t.is(e, input);
-        return Err('foo') as any;
+        return Err("foo") as any;
       })
       .unwrapErr(),
-    'foo' as any,
+    "foo" as any,
   );
 };
 
@@ -214,33 +214,33 @@ booleanValues.forEach((value, index) => {
     `Ok works with boolean value ${value} ${index}`,
     testOk,
     value,
-    'boolean',
+    "boolean",
   );
   test(
     `Err works with boolean value ${value} ${index}`,
     testErr,
     value,
-    'boolean',
+    "boolean",
   );
 });
 
 numberValues.forEach((value, index) => {
-  test(`Ok works with number value ${value} ${index}`, testOk, value, 'number');
+  test(`Ok works with number value ${value} ${index}`, testOk, value, "number");
   test(
     `Err works with number value ${value} ${index}`,
     testErr,
     value,
-    'number',
+    "number",
   );
 });
 
 bigintValues.forEach((value, index) => {
-  test(`Ok works with bigint value ${value} ${index}`, testOk, value, 'bigint');
+  test(`Ok works with bigint value ${value} ${index}`, testOk, value, "bigint");
   test(
     `Err works with bigint value ${value} ${index}`,
     testErr,
     value,
-    'bigint',
+    "bigint",
   );
 });
 
@@ -249,23 +249,23 @@ symbolValues.forEach((value, index) => {
     `Ok works with symbol value ${String(value)} ${index}`,
     testOk,
     value,
-    'symbol',
+    "symbol",
   );
   test(
     `Err works with symbol value ${String(value)} ${index}`,
     testErr,
     value,
-    'symbol',
+    "symbol",
   );
 });
 
 stringValues.forEach((value, index) => {
-  test(`Ok works with string value ${value} ${index}`, testOk, value, 'string');
+  test(`Ok works with string value ${value} ${index}`, testOk, value, "string");
   test(
     `Err works with string value ${value} ${index}`,
     testErr,
     value,
-    'string',
+    "string",
   );
 });
 
@@ -274,13 +274,13 @@ functionValues.forEach((value, index) => {
     `Ok works with function value ${value} ${index}`,
     testOk,
     value,
-    'function',
+    "function",
   );
   test(
     `Err works with function value ${value} ${index}`,
     testErr,
     value,
-    'function',
+    "function",
   );
 });
 
@@ -289,27 +289,27 @@ undefinedValues.forEach((value, index) => {
     `Ok works with undefined value ${value} ${index}`,
     testOk,
     value,
-    'undefined',
+    "undefined",
   );
   test(
     `Err works with undefined value ${value} ${index}`,
     testErr,
     value,
-    'undefined',
+    "undefined",
   );
 });
 
 nullValues.forEach((value, index) => {
-  test(`Ok works with null value ${value} ${index}`, testOk, value, 'object');
-  test(`Err works with null value ${value} ${index}`, testErr, value, 'object');
+  test(`Ok works with null value ${value} ${index}`, testOk, value, "object");
+  test(`Err works with null value ${value} ${index}`, testErr, value, "object");
 });
 
 objectValues.forEach((value, index) => {
-  test(`Ok works with object value ${value} ${index}`, testOk, value, 'object');
+  test(`Ok works with object value ${value} ${index}`, testOk, value, "object");
   test(
     `Err works with object value ${value} ${index}`,
     testErr,
     value,
-    'object',
+    "object",
   );
 });
