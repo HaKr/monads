@@ -10,6 +10,8 @@ import {
   Some,
 } from "../../lib/option/option";
 
+import { Err, Ok } from "../../lib/result/result";
+
 import {
   bigintValues,
   booleanValues,
@@ -83,6 +85,14 @@ const testSome = <T>(t: ExecutionContext, input: T, type: string) => {
   // Test match
   t.is(testMatch(some), "some");
   t.is(testMatchNoneFunc(some), "some");
+  t.is(
+    some.okOrElse(() => new Error("not expected")),
+    Ok(input),
+  );
+  t.is(
+    some.okOrElse(() => Promise.resolve(new Error("not expected"))),
+    Ok(input),
+  );
 };
 
 const testNone = (t: ExecutionContext, someAsNone?: Option<unknown>) => {
@@ -126,6 +136,16 @@ const testNone = (t: ExecutionContext, someAsNone?: Option<unknown>) => {
   // Test match
   t.is(testMatch(none), "none");
   t.is(testMatchNoneFunc(none), "none");
+
+  const expectedError = new Error("as expected");
+  t.is(
+    none.okOrElse(() => expectedError),
+    Err(expectedError),
+  );
+  t.is(
+    none.okOrElse(() => Promise.resolve(new Error("not expected"))),
+    Ok(input),
+  );
 };
 
 booleanValues.forEach((value: any, index: any) => {

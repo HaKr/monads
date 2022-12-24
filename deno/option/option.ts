@@ -1,128 +1,115 @@
-export const OptionType = {
-  Some: Symbol(':some'),
-  None: Symbol(':none'),
-};
+// import { Err, Ok, type Result } from "../result/result.ts";
 
-export interface Match<T, U> {
-  some: (val: T) => U;
-  none: (() => U) | U;
+import { FutureOption, Match, Option, OptionOrFuture } from "./api.ts";
+import { UnwrapableOption } from "./chainable.ts";
+import { NoneValue, SomeValue } from "./implementation.ts";
+
+export function Some<T>(value: T): Option<T> {
+  return OptionValue.from(new SomeValue<T>(value));
 }
 
-export interface Option<T> {
-  type: symbol;
-  isSome(): boolean;
-  isNone(): boolean;
-  match<U>(fn: Match<T, U>): U;
-  map<U>(fn: (val: T) => U): Option<U>;
-  andThen<U>(fn: (val: T) => Option<U>): Option<U>;
-  or<U>(optb: Option<U>): Option<T | U>;
-  and<U>(optb: Option<U>): Option<U>;
-  unwrapOr(def: T): T;
-  unwrap(): T | never;
+export function None<T>(): Option<T> {
+  return OptionValue.from(new NoneValue<T>());
 }
 
-export interface OptSome<T> extends Option<T> {
-  unwrap(): T;
-  map<U>(fn: (val: T) => U): OptSome<U>;
-  or<U>(optb: Option<U>): Option<T>;
-  and<U>(optb: Option<U>): Option<U>;
-}
+export class OptionValue<T> implements Option<T>, UnwrapableOption<T> {
+  constructor(
+    private option: UnwrapableOption<T>,
+  ) {}
 
-export interface OptNone<T> extends Option<T> {
-  unwrap(): never;
-  map<U>(fn: (val: T) => U): OptNone<U>;
-  or<U>(optb: Option<U>): Option<U>;
-  and<U>(optb: Option<U>): OptNone<U>;
-}
+  get type(): symbol {
+    return this.option.type;
+  }
 
-export function Some<T>(val?: T | undefined): Option<T> {
-  return typeof val === 'undefined'
-    ? none_constructor<T>()
-    : some_constructor<T>(val as T);
-}
+  static from<T>(option: UnwrapableOption<T>): Option<T> {
+    return new OptionValue(option);
+  }
 
-export const None = none_constructor<any>();
+  and<U>(optb: Option<U>): Option<U> {
+    return this.option.and(optb);
+  }
 
-function some_constructor<T>(val: T): OptSome<T> {
-  return {
-    type: OptionType.Some,
-    isSome(): boolean {
-      return true;
-    },
-    isNone(): boolean {
-      return false;
-    },
-    match<U>(fn: Match<T, U>): U {
-      return fn.some(val);
-    },
-    map<U>(fn: (val: T) => U): OptSome<U> {
-      return some_constructor<U>(fn(val));
-    },
-    andThen<U>(fn: (val: T) => Option<U>): Option<U> {
-      return fn(val);
-    },
-    or<U>(_optb: Option<U>): Option<T> {
+  andThen<U>(fn: (some: T) => FutureOption<U>): FutureOption<U>;
+  andThen<U>(fn: (some: T) => Option<U>): Option<U>;
+  andThen<U>(
+    fn: (some: T) => OptionOrFuture<U>,
+  ): OptionOrFuture<U> {
+    return this.option.andThen(fn as any);
+  }
+
+  filter(predicate: (some: T) => boolean): Option<T> {
+    return this.option.filter(predicate);
+  }
+
+  getOrInsert(value: T): T {
+    const optional = this.option.orElse(() => {
+      this.option = new SomeValue<T>(value);
       return this;
-    },
-    and<U>(optb: Option<U>): Option<U> {
-      return optb;
-    },
-    unwrapOr(_def: T): T {
-      return val;
-    },
-    unwrap(): T {
-      return val;
-    },
-  };
-}
+    });
+    return (optional as unknown as UnwrapableOption<T>).unwrap();
+  }
 
-function none_constructor<T>(): OptNone<T> {
-  return {
-    type: OptionType.None,
-    isSome(): boolean {
-      return false;
-    },
-    isNone(): boolean {
-      return true;
-    },
-    match<U>(matchObject: Match<T, U>): U {
-      const { none } = matchObject;
+  insert(value: T) {
+    this.option = new SomeValue<T>(value);
+    return value;
+  }
 
-      if (typeof none === 'function') {
-        return (none as () => U)();
-      }
+  isSome(): boolean {
+    return this.option.isSome();
+  }
+  isNone(): boolean {
+    return this.option.isNone();
+  }
+  map<U>(fn: (some: T) => Promise<U>): FutureOption<U>;
+  map<U>(fn: (some: T) => U): Option<U>;
+  map<U>(fn: unknown): FutureOption<U> | Option<U> {
+    return this.option.map(fn as any);
+  }
 
-      return none;
-    },
-    map<U>(_fn: (val: T) => U): OptNone<U> {
-      return none_constructor<U>();
-    },
-    andThen<U>(_fn: (val: T) => Option<U>): OptNone<U> {
-      return none_constructor<U>();
-    },
-    or<U>(optb: Option<U>): Option<U> {
-      return optb;
-    },
-    and<U>(_optb: Option<U>): OptNone<U> {
-      return none_constructor<U>();
-    },
-    unwrapOr(def: T): T {
-      if (def == null) {
-        throw new Error('Cannot call unwrapOr with a missing value.');
-      }
+  or(optb: Option<T>): Option<T> {
+    return this.option.or(optb);
+  }
 
-      return def;
-    },
-    unwrap(): never {
-      throw new ReferenceError('Trying to unwrap None.');
-    },
-  };
-}
+  orElse(fn: () => FutureOption<T>): FutureOption<T>;
+  orElse(fn: () => Option<T>): Option<T>;
+  orElse(fn: () => OptionOrFuture<T>): OptionOrFuture<T> {
+    return this.option.orElse(fn as any);
+  }
 
-export function isSome<T>(val: Option<T>): val is OptSome<T> {
-  return val.isSome();
-}
+  match<U>(fn: Match<T, U>): U {
+    throw new Error("Method not implemented.");
+  }
 
-export function isNone<T>(val: Option<T>): val is OptNone<T> {
-  return val.isNone();
+  /**
+   *  Replaces the actual value in the option by the value given in parameter,
+   * returning the old value if present, leaving a Some in its place without deinitializing either one.
+   *
+   * @example
+   * ```typescript
+   * let mut x = Some(2);
+   * let old = x.replace(5);
+   * assert_eq!(x, Some(5));
+   * assert_eq!(old, Some(2));
+   *
+   * let mut x = None;
+   * let old = x.replace(3);
+   * assert_eq!(x, Some(3));
+   * assert_eq!(old, None);
+   * ```
+   */
+  replace(value: T): Option<T> {
+    const old = OptionValue.from(this.option);
+    this.insert(value);
+    return old;
+  }
+
+  unwrapOr(def: T): T {
+    throw new Error("Method not implemented.");
+  }
+  unwrap(): T {
+    return this.option.unwrap();
+  }
+  [Symbol.iterator]() {
+    return this.option[Symbol.iterator]();
+  }
 }
