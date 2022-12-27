@@ -1,10 +1,10 @@
-import { Match, Option, OptionType, PossibleFuture } from "./api.ts";
-import { ChainableOption } from "./chainable.ts";
-import { OptionValue, Some } from "./option.ts";
-export type OptionOrFuture<T> = PossibleFuture<Option<T>>;
-export type FutureOption<T> = Promise<Option<T>>;
+import { Option, OptionType, PossibleFuture } from "./api.ts";
+import { ChainableOption, UnwrapableOption } from "./chainable.ts";
+import { OptionValue, PromisedOption, Some } from "./option.ts";
 
-export class SomeValue<T> implements ChainableOption<T> {
+export type OptionOrFuture<T> = PossibleFuture<Option<T>>;
+
+export class SomeValue<T> implements ChainableOption<T>, UnwrapableOption<T> {
   constructor(private value: T) {}
 
   [Symbol.iterator](): IterableIterator<T> {
@@ -19,25 +19,20 @@ export class SomeValue<T> implements ChainableOption<T> {
     return optb;
   }
 
-  andThen<U>(fn: (some: T) => FutureOption<U>): FutureOption<U>;
+  andThen<U>(fn: (some: T) => Promise<Option<U>>): PromisedOption<U>;
   andThen<U>(fn: (some: T) => Option<U>): Option<U>;
   andThen<U>(
     fn: (some: T) => OptionOrFuture<U>,
-  ): OptionOrFuture<U> {
-    return fn(this.value);
+  ): PromisedOption<U> | Option<U> {
+    const alt = fn(this.value);
+    return alt instanceof Promise ? PromisedOption.create(alt) : alt;
   }
 
   filter(predicate: (some: T) => boolean): Option<T> {
-    return OptionValue.from(predicate(this.value) ? this : new NoneValue<T>());
+    return OptionValue.from(
+      predicate(this.value) ? this : new NoneValue<T>(),
+    );
   }
-  /*
-  flatten<U>(): Option<U> {
-    return (typeof this.value == "object" && this.value !== null &&
-        typeof (this.value as { type?: symbol }) == "symbol")
-      ? this.value as unknown as Option<U>
-      : this as unknown as Option<U>;
-  }
-  */
 
   isSome(): boolean {
     return true;
@@ -50,7 +45,7 @@ export class SomeValue<T> implements ChainableOption<T> {
   /**
    * Maps an Option<T> to Option<U> by applying a function to a contained value.
    */
-  map<U>(fn: (some: T) => Promise<U>): FutureOption<U>;
+  map<U>(fn: (some: T) => Promise<U>): Promise<Option<U>>;
   map<U>(fn: (some: T) => U): Option<U>;
   map<U>(fn: (some: T) => PossibleFuture<U>): OptionOrFuture<U> {
     const newVal = fn(this.value);
@@ -62,24 +57,18 @@ export class SomeValue<T> implements ChainableOption<T> {
     return OptionValue.from(this);
   }
 
-  orElse(fn: () => FutureOption<T>): FutureOption<T>;
+  orElse(fn: () => Promise<Option<T>>): PromisedOption<T>;
   orElse(fn: () => Option<T>): Option<T>;
-  orElse(_: () => OptionOrFuture<T>): OptionOrFuture<T> {
+  orElse(_: () => OptionOrFuture<T>): PromisedOption<T> | Option<T> {
     return OptionValue.from(this);
   }
 
-  match<U>(fn: Match<T, U>): U {
-    throw new Error("Method not implemented.");
-  }
-  unwrapOr(def: T): T {
-    throw new Error("Method not implemented.");
-  }
   unwrap(): T {
     return this.value;
   }
 }
 
-export class NoneValue<T> implements ChainableOption<T> {
+export class NoneValue<T> implements ChainableOption<T>, UnwrapableOption<T> {
   constructor() {}
 
   [Symbol.iterator](): IterableIterator<T> {
@@ -93,21 +82,17 @@ export class NoneValue<T> implements ChainableOption<T> {
     return true;
   }
 
-  match<U>(fn: Match<T, U>): U {
-    throw new Error("Method not implemented.");
-  }
-
-  map<U>(fn: (some: T) => Promise<U>): FutureOption<U>;
+  map<U>(fn: (some: T) => Promise<U>): Promise<Option<U>>;
   map<U>(fn: (some: T) => U): Option<U>;
   map<U>(_: (val: T) => PossibleFuture<U>): OptionOrFuture<U> {
     return OptionValue.from(this as unknown as NoneValue<U>);
   }
 
-  andThen<U>(fn: (some: T) => FutureOption<U>): FutureOption<U>;
+  andThen<U>(fn: (some: T) => Promise<Option<U>>): PromisedOption<U>;
   andThen<U>(fn: (some: T) => Option<U>): Option<U>;
   andThen<U>(
     _: (some: T) => OptionOrFuture<U>,
-  ): OptionOrFuture<U> {
+  ): PromisedOption<U> | Option<U> {
     return OptionValue.from(this as unknown as NoneValue<U>);
   }
 
@@ -115,10 +100,11 @@ export class NoneValue<T> implements ChainableOption<T> {
     return optb;
   }
 
-  orElse(fn: () => FutureOption<T>): FutureOption<T>;
+  orElse(fn: () => Promise<Option<T>>): PromisedOption<T>;
   orElse(fn: () => Option<T>): Option<T>;
-  orElse(fn: () => OptionOrFuture<T>): OptionOrFuture<T> {
-    return fn();
+  orElse(fn: () => OptionOrFuture<T>): PromisedOption<T> | Option<T> {
+    const alt = fn();
+    return alt instanceof Promise ? PromisedOption.create(alt) : alt;
   }
 
   and<U>(_: Option<U>): Option<U> {
@@ -129,9 +115,6 @@ export class NoneValue<T> implements ChainableOption<T> {
     return OptionValue.from(this);
   }
 
-  unwrapOr(def: T): T {
-    throw new Error("Method not implemented.");
-  }
   unwrap(): T {
     throw new Error("Cannot unwrap None");
   }

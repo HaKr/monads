@@ -2,7 +2,6 @@ import { ChainableOption } from "./chainable.ts";
 
 export type PossibleFuture<T> = T | Promise<T>;
 export type OptionOrFuture<T> = PossibleFuture<Option<T>>;
-export type FutureOption<T> = Promise<Option<T>>;
 
 export const OptionType = {
   Some: Symbol(":some"),
@@ -37,9 +36,6 @@ export interface Option<T> extends ChainableOption<T> {
    */
   insert(value: T): T;
 
-  /** */
-  match<U>(fn: Match<T, U>): U;
-
   /**
    *  Replaces the actual value in the option by the value given in parameter,
    * returning the old value if present, leaving a Some in its place without deinitializing either one.
@@ -58,11 +54,4 @@ export interface Option<T> extends ChainableOption<T> {
    * ```
    */
   replace(value: T): Option<T>;
-
-  unwrapOr(def: T): T;
-}
-
-export interface Match<T, U> {
-  some: (val: T) => U;
-  none: (() => U) | U;
 }

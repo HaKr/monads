@@ -88,3 +88,30 @@ Deno.test("option replace", () => {
   assertEquals(y, Some(3));
   assertEquals(oldy, None());
 });
+
+Deno.test("option promises", async () => {
+  assertEquals(
+    await Some(12)
+      .andThen(async (n) => await Promise.resolve(Some(n * 2)))
+      .andThen(async (n) => await Promise.resolve(Some(n * 3)))
+      .andThen(async (n) => await Promise.resolve(Some(n * 4))),
+    Some(12 * 2 * 3 * 4),
+  );
+
+  assertEquals(
+    await None<number>()
+      .orElse(async () => await Promise.resolve(Some(321)))
+      .andThen(async (n) => await Promise.resolve(Some(n * 2)))
+      .andThen(async (n) => await Promise.resolve(Some(n * 3)))
+      .andThen(async (n) => await Promise.resolve(Some(n * 4))),
+    Some(321 * 2 * 3 * 4),
+  );
+
+  assertEquals(
+    await None<number>()
+      .orElse(async () => await Promise.resolve(Some(55)))
+      .andThen(async (n) => await Promise.resolve(Some(n * 2)))
+      .andThen(async (n) => await Promise.resolve(Some(`${n} * 3`))),
+    Some("110 * 3"),
+  );
+});

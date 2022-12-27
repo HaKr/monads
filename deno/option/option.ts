@@ -1,6 +1,6 @@
 // import { Err, Ok, type Result } from "../result/result.ts";
 
-import { FutureOption, Match, Option, OptionOrFuture } from "./api.ts";
+import { Option, OptionOrFuture } from "./api.ts";
 import { UnwrapableOption } from "./chainable.ts";
 import { NoneValue, SomeValue } from "./implementation.ts";
 
@@ -29,12 +29,12 @@ export class OptionValue<T> implements Option<T>, UnwrapableOption<T> {
     return this.option.and(optb);
   }
 
-  andThen<U>(fn: (some: T) => FutureOption<U>): FutureOption<U>;
+  andThen<U>(fn: (some: T) => Promise<Option<U>>): PromisedOption<U>;
   andThen<U>(fn: (some: T) => Option<U>): Option<U>;
   andThen<U>(
     fn: (some: T) => OptionOrFuture<U>,
-  ): OptionOrFuture<U> {
-    return this.option.andThen(fn as any);
+  ): PromisedOption<U> | Option<U> {
+    return this.option.andThen(fn as (some: T) => Option<U>);
   }
 
   filter(predicate: (some: T) => boolean): Option<T> {
@@ -60,24 +60,20 @@ export class OptionValue<T> implements Option<T>, UnwrapableOption<T> {
   isNone(): boolean {
     return this.option.isNone();
   }
-  map<U>(fn: (some: T) => Promise<U>): FutureOption<U>;
+  map<U>(fn: (some: T) => Promise<U>): Promise<Option<U>>;
   map<U>(fn: (some: T) => U): Option<U>;
-  map<U>(fn: unknown): FutureOption<U> | Option<U> {
-    return this.option.map(fn as any);
+  map<U>(fn: unknown): Promise<Option<U>> | Option<U> {
+    return this.option.map(fn as (some: T) => U);
   }
 
   or(optb: Option<T>): Option<T> {
     return this.option.or(optb);
   }
 
-  orElse(fn: () => FutureOption<T>): FutureOption<T>;
+  orElse(fn: () => Promise<Option<T>>): PromisedOption<T>;
   orElse(fn: () => Option<T>): Option<T>;
-  orElse(fn: () => OptionOrFuture<T>): OptionOrFuture<T> {
-    return this.option.orElse(fn as any);
-  }
-
-  match<U>(fn: Match<T, U>): U {
-    throw new Error("Method not implemented.");
+  orElse(fn: () => OptionOrFuture<T>): PromisedOption<T> | Option<T> {
+    return this.option.orElse(fn as () => Option<T>);
   }
 
   /**
@@ -103,13 +99,94 @@ export class OptionValue<T> implements Option<T>, UnwrapableOption<T> {
     return old;
   }
 
-  unwrapOr(def: T): T {
-    throw new Error("Method not implemented.");
-  }
   unwrap(): T {
     return this.option.unwrap();
   }
   [Symbol.iterator]() {
     return this.option[Symbol.iterator]();
+  }
+}
+
+export class PromisedOption<T> extends Promise<Option<T>> {
+  constructor(
+    private promise: Promise<Option<T>>,
+  ) {
+    super((resolve) => {
+      resolve(undefined as unknown as Option<T>);
+    });
+  }
+
+  static create<U>(promise: Promise<Option<U>>): PromisedOption<U> {
+    return new PromisedOption(promise);
+  }
+
+  then<TResult1 = Option<T>, TResult2 = never>(
+    onfulfilled?:
+      | ((value: Option<T>) => TResult1 | PromiseLike<TResult1>)
+      | undefined
+      | null,
+    onrejected?:
+      // deno-lint-ignore no-explicit-any
+      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+      | undefined
+      | null,
+  ): Promise<TResult1 | TResult2> {
+    return this.promise.then(onfulfilled, onrejected);
+  }
+
+  and<U>(optb: Option<U>): PromisedOption<U> {
+    return PromisedOption.create(
+      this.promise.then((option) => option.and(optb)),
+    );
+  }
+
+  andThen<U>(fn: (some: T) => Promise<Option<U>>): PromisedOption<U>;
+  andThen<U>(fn: (some: T) => Option<U>): Option<U>;
+  andThen<U>(
+    fn: (some: T) => OptionOrFuture<U>,
+  ): PromisedOption<U> | Option<U> {
+    return PromisedOption.create(
+      this.promise.then((option) => {
+        return option.andThen(fn as (some: T) => Promise<Option<U>>);
+      }),
+    );
+  }
+
+  filter(predicate: (some: T) => boolean): PromisedOption<T> {
+    return PromisedOption.create(
+      this.promise.then((option) => option.filter(predicate)),
+    );
+  }
+
+  isSome(): Promise<boolean> {
+    return this.promise.then((option) => option.isSome());
+  }
+
+  isNone(): Promise<boolean> {
+    return this.promise.then((option) => option.isNone());
+  }
+
+  map<U>(fn: (some: T) => Promise<U>): PromisedOption<U>;
+  map<U>(fn: (some: T) => U): PromisedOption<U>;
+  map<U>(fn: unknown): PromisedOption<U> {
+    return PromisedOption.create(
+      this.promise.then((option) => option.map(fn as (some: T) => Promise<U>)),
+    );
+  }
+
+  or(optb: Option<T>): PromisedOption<T> {
+    return PromisedOption.create(
+      this.promise.then((option) => option.or(optb)),
+    );
+  }
+
+  orElse(fn: () => Promise<Option<T>>): PromisedOption<T>;
+  orElse(fn: () => Option<T>): PromisedOption<T>;
+  orElse(fn: () => OptionOrFuture<T>): PromisedOption<T> {
+    return PromisedOption.create(
+      this.promise.then((option) => {
+        return option.orElse(fn as () => Promise<Option<T>>);
+      }),
+    );
   }
 }
